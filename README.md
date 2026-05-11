@@ -90,10 +90,14 @@ cmake --build out/build/x64-release
 
 #### 前置条件
 
-1. 安装 [Android NDK](https://developer.android.com/ndk/downloads)（本工程使用 NDK r27d）
-2. 确认 NDK 路径（当前配置：`F:/android-ndk-r27d-windows/android-ndk-r27d`）
+| 组件 | 版本 | 说明 |
+|------|------|------|
+| Android NDK | **r27d** | `F:/android-ndk-r27d-windows/android-ndk-r27d` |
+| Toolchain | LLVM Clang 18.0.4 | `toolchains/llvm/prebuilt/windows-x86_64` |
+| CMake | 3.8+ | 交叉编译使用 NDK 自带的 `android.toolchain.cmake` |
 
 > 如 NDK 路径不同，请修改 `CMakePresets.json` 中 `android-base` preset 的 `CMAKE_TOOLCHAIN_FILE` 变量。
+> 验证 NDK 版本：`file out/build/android-arm64-release/libCrashTrace.so` 输出中可见 `built by NDK r27d`。
 
 #### 构建（使用 CMake Presets）
 
