@@ -9,12 +9,12 @@
 #include "CrashTrace_android.h"
 #include "../CrashTrace.h"
 
+#include <string.h>
 #include <unistd.h>
 
 // ── 配置 ───────────────────────────────────────────────
 // Minidump 输出目录默认值（可通过 SetDumpDirectory 覆盖）
 // 发布时建议从 Unity C# 侧传入 Application.persistentDataPath
-#include <string.h>
 
 static char g_dumpDirectory[512] = "/data/local/tmp/crash_dumps";
 
