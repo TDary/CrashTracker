@@ -181,7 +181,18 @@ void SetDumpDirectory(const char* path) {
 }
 
 // ── 主动写 dump（非崩溃场景）─────────────────────────
-// 模拟 EXCEPTION_POINTERS 以复用 Minidump 生成逻辑
+// SEH 部分必须隔离在无 C++ 对象析构的函数中（MSVC C2712）
+
+static bool WriteDumpWithSEH(LPCWSTR filename) {
+    __try {
+        DebugBreak();
+    } __except (GenerateMiniDummp(
+        GetExceptionInformation(), filename
+    ), EXCEPTION_EXECUTE_HANDLER) {
+    }
+    return true;
+}
+
 bool CaptureCrashDumpWindows() {
     std::wstring filename;
     if (g_dumpDirectory[0]) {
@@ -190,13 +201,7 @@ bool CaptureCrashDumpWindows() {
     } else {
         filename = L"capture_" + std::to_wstring(std::time(0)) + L".dmp";
     }
-    __try {
-        DebugBreak();
-    } __except (GenerateMiniDummp(
-        GetExceptionInformation(), filename.c_str()
-    ), EXCEPTION_EXECUTE_HANDLER) {
-    }
-    return true;
+    return WriteDumpWithSEH(filename.c_str());
 }
 
 // ── Windows 端暂不持久化 AppMemory ──────────────────────
