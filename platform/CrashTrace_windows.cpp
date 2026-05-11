@@ -165,3 +165,36 @@ void GenerateMiniDummp(_EXCEPTION_POINTERS* excp, LPCWSTR path) {
 void StartCrashTrace() {
     SetUnhandledExceptionFilter(FuncCrashCallBack);
 }
+
+// ── 主动写 dump（非崩溃场景）─────────────────────────
+// 模拟 EXCEPTION_POINTERS 以复用 Minidump 生成逻辑
+bool CaptureCrashDumpWindows() {
+    // 在当前线程触发一个虚假的断点异常以捕获上下文
+    __try {
+        DebugBreak();
+    } __except (GenerateMiniDummp(
+        GetExceptionInformation(),
+        (std::wstring(L"capture_") + std::to_wstring(std::time(0)) + L".dmp").c_str()
+    ), EXCEPTION_EXECUTE_HANDLER) {
+    }
+    return true;
+}
+
+// ── Windows 端暂不持久化 AppMemory ──────────────────────
+// Minidump 本身已包含完整进程内存，游戏状态可通过
+// MiniDumpWriteDump 的 UserStreamParam 参数注入
+void RegisterAppMemoryWindows(void*, size_t) {}
+void UnregisterAppMemoryWindows(void*) {}
+
+// ── 公共 API 调度（见 CrashTrace.h）─────────────────────
+bool CaptureCrashDump() {
+    return CaptureCrashDumpWindows();
+}
+
+void RegisterAppMemory(void* ptr, size_t length) {
+    RegisterAppMemoryWindows(ptr, length);
+}
+
+void UnregisterAppMemory(void* ptr) {
+    UnregisterAppMemoryWindows(ptr);
+}
