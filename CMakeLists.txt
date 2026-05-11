@@ -1,7 +1,7 @@
 # CrashTrace — 跨平台崩溃追踪 SDK
 # Windows (DLL) / Android (SO)
 # 集成 Google Breakpad 客户端库（仅 Android）
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.8...4.0)
 
 # 如果支持，请为 MSVC 编译器启用热重载。
 if(POLICY CMP0141)
