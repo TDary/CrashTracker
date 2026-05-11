@@ -137,27 +137,70 @@ int main() {
 }
 ```
 
-### Android 接入（Unity 游戏）
+### Unity 游戏接入
 
-```java
-// MainActivity.java
-public class MainActivity extends Activity {
-    static {
-        System.loadLibrary("CrashTrace");  // 加载即自动 StartCrashTrace()
-    }
+#### 1. 放置原生库
+
+```
+Assets/Plugins/
+├── x86_64/
+│   └── CrashTrace.dll              # Windows 64 位
+├── Android/
+│   ├── arm64-v8a/
+│   │   └── libCrashTrace.so        # Android 64 位
+│   └── armeabi-v7a/
+│       └── libCrashTrace.so        # Android 32 位
+```
+
+#### 2. C# 声明（DllImport）
+
+```csharp
+using System;
+using System.Runtime.InteropServices;
+using UnityEngine;
+
+public static class CrashTrace
+{
+#if UNITY_ANDROID
+    const string LibName = "CrashTrace";
+#elif UNITY_STANDALONE_WIN64
+    const string LibName = "CrashTrace";
+#else
+    const string LibName = ""; // 不支持的平台
+#endif
+
+    [DllImport(LibName)]
+    public static extern void StartCrashTrace();
+
+    [DllImport(LibName)]
+    public static extern void SetDumpDirectory(string path);
+
+    [DllImport(LibName)]
+    public static extern bool CaptureCrashDump();
+
+    [DllImport(LibName)]
+    public static extern void RegisterAppMemory(IntPtr ptr, ulong length);
+
+    [DllImport(LibName)]
+    public static extern void UnregisterAppMemory(IntPtr ptr);
 }
 ```
 
-Unity 中放置 .so 的位置：
-```
-Assets/Plugins/Android/
-├── arm64-v8a/
-│   └── libCrashTrace.so
-└── armeabi-v7a/
-    └── libCrashTrace.so
+#### 3. 初始化
+
+```csharp
+void Awake()
+{
+    // 设置 dump 输出到可写目录（必须在 StartCrashTrace 之前或之后调用均可）
+    CrashTrace.SetDumpDirectory(Application.persistentDataPath + "/crash_dumps");
+
+    // Windows: 显式调用以注册崩溃钩子
+    // Android: JNI_OnLoad 已自动调用，重复调用无害
+    CrashTrace.StartCrashTrace();
+}
 ```
 
-> `JNI_OnLoad` 自动调用 `StartCrashTrace()`，无需手动初始化。
+> Android 端 `JNI_OnLoad` 会自动调用 `StartCrashTrace()`，但显式再调一次无害（内部有防重复逻辑）。Windows 端必须显式调用。
 
 ## 添加新平台
 
