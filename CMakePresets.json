@@ -1,4 +1,4 @@
-﻿{
+{
     "version": 3,
     "configurePresets": [
         {
@@ -53,6 +53,51 @@
             "name": "x86-release",
             "displayName": "x86 Release",
             "inherits": "x86-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "android-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "F:/android-ndk-r27d-windows/android-ndk-r27d/build/cmake/android.toolchain.cmake",
+                "ANDROID_PLATFORM": "24"
+            }
+        },
+        {
+            "name": "android-arm64-debug",
+            "displayName": "Android arm64 Debug",
+            "inherits": "android-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ANDROID_ABI": "arm64-v8a"
+            }
+        },
+        {
+            "name": "android-arm64-release",
+            "displayName": "Android arm64 Release",
+            "inherits": "android-arm64-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "android-arm32-debug",
+            "displayName": "Android arm32 Debug",
+            "inherits": "android-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ANDROID_ABI": "armeabi-v7a"
+            }
+        },
+        {
+            "name": "android-arm32-release",
+            "displayName": "Android arm32 Release",
+            "inherits": "android-arm32-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }

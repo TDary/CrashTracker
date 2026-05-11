@@ -9,7 +9,7 @@ Android 端基于 Google Breakpad 实现完整的 Minidump 生成与信号安全
 CrashTrace/
 ├── CrashTrace.h                  # 公共接口（StartCrashTrace / CaptureCrashDump / RegisterAppMemory）
 ├── CrashTrace.cpp                # 平台调度 + 入口点（DllMain / JNI_OnLoad）
-├── framework.h / .cpp            # 预编译头适配
+├── framework.h / .cpp            # Windows 预编译头适配（仅 Windows 构建包含）
 ├── CMakeLists.txt                # 构建系统（Windows DLL / Android SO + breakpad_client 静态库）
 ├── platform/
 │   ├── CrashTrace_windows.h      # Windows 内部声明（异常过滤器 / Minidump / 堆栈）
@@ -70,21 +70,18 @@ CrashTrace/
 
 > 需要在 VS Installer 中安装"用于 Windows 的 C++ CMake 工具"组件。
 
-#### 方式二：命令行（需安装 CMake）
+#### 方式二：命令行 CMake Presets
 
-从 https://cmake.org/download/ 下载安装 CMake，然后打开 **Developer Command Prompt for VS 2022**（开始菜单搜索）：
+打开 **Developer Command Prompt for VS 2022**（开始菜单搜索）：
 
-```bash
-cd F:\CrashTracker
-
-# 配置（首次或 CMakeLists.txt 变更后）
-cmake -B out/build/x64-debug -G Ninja ^
-  -DCMAKE_C_COMPILER=cl.exe ^
-  -DCMAKE_CXX_COMPILER=cl.exe ^
-  -DCMAKE_BUILD_TYPE=Debug
-
-# 构建
+```cmd
+REM 配置 + 构建 x64 Debug
+cmake --preset x64-debug -S F:\CrashTracker
 cmake --build out/build/x64-debug
+
+REM 配置 + 构建 x64 Release
+cmake --preset x64-release -S F:\CrashTracker
+cmake --build out/build/x64-release
 ```
 
 产物：`out/build/x64-debug/CrashTrace.dll`
@@ -93,43 +90,28 @@ cmake --build out/build/x64-debug
 
 #### 前置条件
 
-1. 安装 [Android NDK](https://developer.android.com/ndk/downloads)（推荐 r25+）
-2. 设置环境变量 `ANDROID_NDK` 指向 NDK 根目录
+1. 安装 [Android NDK](https://developer.android.com/ndk/downloads)（本工程使用 NDK r27d）
+2. 确认 NDK 路径（当前配置：`F:/android-ndk-r27d-windows/android-ndk-r27d`）
 
-#### 构建 arm64-v8a
+> 如 NDK 路径不同，请修改 `CMakePresets.json` 中 `android-base` preset 的 `CMAKE_TOOLCHAIN_FILE` 变量。
 
-```bash
-cmake -B out/build/android-arm64 -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=%ANDROID_NDK%/build/cmake/android.toolchain.cmake \
-  -DANDROID_ABI=arm64-v8a \
-  -DANDROID_PLATFORM=android-21 \
-  -DCMAKE_BUILD_TYPE=Release
-cmake --build out/build/android-arm64
-```
-
-#### 构建其他 ABI
+#### 构建（使用 CMake Presets）
 
 ```bash
-# armeabi-v7a（32 位 ARM）
-cmake -B out/build/android-arm -G Ninja ^
-  -DCMAKE_TOOLCHAIN_FILE=%ANDROID_NDK%/build/cmake/android.toolchain.cmake ^
-  -DANDROID_ABI=armeabi-v7a ^
-  -DANDROID_PLATFORM=android-21 ^
-  -DCMAKE_BUILD_TYPE=Release
+# arm64-v8a（64 位，主流设备）
+cmake --preset android-arm64-release -S F:\CrashTracker
+cmake --build out/build/android-arm64-release
 
-# x86_64（模拟器）
-cmake -B out/build/android-x64 -G Ninja ^
-  -DCMAKE_TOOLCHAIN_FILE=%ANDROID_NDK%/build/cmake/android.toolchain.cmake ^
-  -DANDROID_ABI=x86_64 ^
-  -DANDROID_PLATFORM=android-21 ^
-  -DCMAKE_BUILD_TYPE=Release
+# armeabi-v7a（32 位兼容）
+cmake --preset android-arm32-release -S F:\CrashTracker
+cmake --build out/build/android-arm32-release
 ```
 
 产物：
-- `out/build/android-arm64/libCrashTrace.so`
-- `out/build/android-arm64/libbreakpad_client.a`（中间产物，已静态链接到 SO）
+- `out/build/android-arm64-release/libCrashTrace.so`
+- `out/build/android-arm32-release/libCrashTrace.so`
 
-支持的 ABI：`armeabi-v7a` / `arm64-v8a` / `x86` / `x86_64`
+支持的 ABI：通过修改 preset 中 `ANDROID_ABI` 可构建 `armeabi-v7a` / `arm64-v8a` / `x86` / `x86_64`
 
 ## 使用
 
@@ -151,7 +133,7 @@ int main() {
 }
 ```
 
-### Android 接入（Unity/Unreal 游戏）
+### Android 接入（Unity 游戏）
 
 ```java
 // MainActivity.java
@@ -162,7 +144,16 @@ public class MainActivity extends Activity {
 }
 ```
 
-> 注意：`StartCrashTrace()` 内部注册信号处理器，仅需调用一次。Android 端通过 `JNI_OnLoad` 自动调用。
+Unity 中放置 .so 的位置：
+```
+Assets/Plugins/Android/
+├── arm64-v8a/
+│   └── libCrashTrace.so
+└── armeabi-v7a/
+    └── libCrashTrace.so
+```
+
+> `JNI_OnLoad` 自动调用 `StartCrashTrace()`，无需手动初始化。
 
 ## 添加新平台
 

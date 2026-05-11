@@ -15,8 +15,6 @@ project("CrashTrace")
 set(COMMON_SOURCES
   "CrashTrace.h"
   "CrashTrace.cpp"
-  "framework.h"
-  "framework.cpp"
 )
 
 # ── 平台检测 ──────────────────────────────────────────
@@ -24,6 +22,8 @@ if(WIN32)
   set(PLATFORM_SOURCES
     "platform/CrashTrace_windows.h"
     "platform/CrashTrace_windows.cpp"
+    "framework.h"
+    "framework.cpp"
   )
   set(PLATFORM_LIBS DbgHelp)
 
@@ -83,28 +83,12 @@ elseif(ANDROID)
     "${BREAKPAD_ROOT}/src/common/linux/safe_readlink.cc"
   )
 
-  # Breakpad ARM/ARM64 getcontext 汇编
-  if(CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
-    set(BREAKPAD_GETCONTEXT_ASM
-      "${BREAKPAD_ROOT}/src/common/linux/breakpad_getcontext.S")
-    set_source_files_properties(${BREAKPAD_GETCONTEXT_ASM}
-      PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
-  elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
-    set(BREAKPAD_GETCONTEXT_ASM
-      "${BREAKPAD_ROOT}/src/common/linux/breakpad_getcontext.S")
-    set_source_files_properties(${BREAKPAD_GETCONTEXT_ASM}
-      PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
-  elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
-    set(BREAKPAD_GETCONTEXT_ASM
-      "${BREAKPAD_ROOT}/src/common/linux/breakpad_getcontext.S")
-    set_source_files_properties(${BREAKPAD_GETCONTEXT_ASM}
-      PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
-  elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64")
-    set(BREAKPAD_GETCONTEXT_ASM
-      "${BREAKPAD_ROOT}/src/common/linux/breakpad_getcontext.S")
-    set_source_files_properties(${BREAKPAD_GETCONTEXT_ASM}
-      PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
-  endif()
+  # Breakpad getcontext 汇编（内部用 #if 适配各架构，无条件加入）
+  set(BREAKPAD_GETCONTEXT_ASM
+    "${BREAKPAD_ROOT}/src/common/linux/breakpad_getcontext.S")
+  set_source_files_properties(${BREAKPAD_GETCONTEXT_ASM}
+    PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
+  enable_language(ASM)
 
   # breakpad_client 静态库
   add_library(breakpad_client STATIC
