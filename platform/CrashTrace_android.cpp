@@ -11,9 +11,12 @@
 
 #include <unistd.h>
 
-// ── 配置常量 ───────────────────────────────────────────
-// Minidump 输出目录（游戏上线建议改为 /data/data/<pkg>/files/minidumps）
-static const char* kDumpDirectory = "/data/local/tmp/crash_dumps";
+// ── 配置 ───────────────────────────────────────────────
+// Minidump 输出目录默认值（可通过 SetDumpDirectory 覆盖）
+// 发布时建议从 Unity C# 侧传入 Application.persistentDataPath
+#include <string.h>
+
+static char g_dumpDirectory[512] = "/data/local/tmp/crash_dumps";
 
 // 单个 dump 文件大小上限（游戏场景 2MB 足够，避免 OOM）
 static const off_t kDumpSizeLimit = 2 * 1024 * 1024;
@@ -93,9 +96,9 @@ void StartCrashTrace() {
     __android_log_print(ANDROID_LOG_INFO, "CrashTrace",
         "Initializing Google Breakpad crash handler...");
     __android_log_print(ANDROID_LOG_INFO, "CrashTrace",
-        "Dump directory: %s", kDumpDirectory);
+        "Dump directory: %s", g_dumpDirectory);
 
-    google_breakpad::MinidumpDescriptor descriptor(kDumpDirectory);
+    google_breakpad::MinidumpDescriptor descriptor(g_dumpDirectory);
     descriptor.set_size_limit(kDumpSizeLimit);
 
     g_breakpad_handler = new google_breakpad::ExceptionHandler(
@@ -110,6 +113,47 @@ void StartCrashTrace() {
     __android_log_print(ANDROID_LOG_INFO, "CrashTrace",
         "Breakpad handler installed — monitoring SIGSEGV/SIGABRT/SIGBUS/"
         "SIGFPE/SIGILL/SIGTRAP");
+}
+
+void SetDumpDirectory(const char* path) {
+    if (!path || !path[0]) {
+        __android_log_print(ANDROID_LOG_WARN, "CrashTrace",
+            "SetDumpDirectory: empty path, ignored");
+        return;
+    }
+    if (strlen(path) >= sizeof(g_dumpDirectory)) {
+        __android_log_print(ANDROID_LOG_ERROR, "CrashTrace",
+            "SetDumpDirectory: path too long (max %zu)", sizeof(g_dumpDirectory) - 1);
+        return;
+    }
+
+    strcpy(g_dumpDirectory, path);
+
+    // 如果已经初始化过，则重建 ExceptionHandler 以使用新路径
+    if (g_breakpad_handler) {
+        delete g_breakpad_handler;
+        g_breakpad_handler = nullptr;
+
+        google_breakpad::MinidumpDescriptor descriptor(g_dumpDirectory);
+        descriptor.set_size_limit(kDumpSizeLimit);
+
+        g_breakpad_handler = new google_breakpad::ExceptionHandler(
+            descriptor,
+            FilterCallback,
+            DumpCallback,
+            nullptr,
+            true,
+            -1
+        );
+
+        __android_log_print(ANDROID_LOG_INFO, "CrashTrace",
+            "Breakpad handler re-created with new dump directory: %s",
+            g_dumpDirectory);
+    } else {
+        __android_log_print(ANDROID_LOG_INFO, "CrashTrace",
+            "Dump directory set to: %s (will take effect on next StartCrashTrace)",
+            g_dumpDirectory);
+    }
 }
 
 bool CaptureCrashDump() {

@@ -32,6 +32,12 @@ extern "C" {
 /// Android: 初始化 Google Breakpad ExceptionHandler，崩溃时生成 Minidump
 CRASHTRACE_API void StartCrashTrace();
 
+/// 设置崩溃转储输出目录（Android / Windows 通用）
+/// 必须在 StartCrashTrace() 之前调用才能生效；若已初始化则自动重建处理器
+/// 建议传入 Unity 的 Application.persistentDataPath
+/// 未调用时默认路径：Android = /data/local/tmp/crash_dumps，Windows = 当前目录
+CRASHTRACE_API void SetDumpDirectory(const char* path);
+
 /// 手动触发生成崩溃转储（不触发崩溃）
 /// 用于捕获当前进程状态：卡顿检测、内存超标预警、主动调试等场景
 /// 返回 true 表示 dump 写入成功

@@ -6,7 +6,8 @@
 
 #pragma comment(lib, "DbgHelp.lib")
 
-// ── 备选过滤器 1：基础堆栈打印 ──────────────────────────
+// ── 可配置的 dump 输出目录 ──────────────────────────────
+static wchar_t g_dumpDirectory[512] = L"";  // 空 = 当前目录
 LONG WINAPI TopLevelFilter(_EXCEPTION_POINTERS* excp) {
     // 基础错误信息提取
     DWORD errCode = excp->ExceptionRecord->ExceptionCode;
@@ -70,7 +71,13 @@ LONG WINAPI TopLevelFunctionFilter(_EXCEPTION_POINTERS* excp) {
 // ── 默认过滤器：时间戳命名 Minidump ────────────────────
 LONG WINAPI FuncCrashCallBack(_EXCEPTION_POINTERS* excp) {
     std::time_t t = std::time(0);
-    std::wstring filename = L"crash_" + std::to_wstring(t) + L".dmp";
+    std::wstring filename;
+    if (g_dumpDirectory[0]) {
+        filename = std::wstring(g_dumpDirectory) + L"\\crash_"
+                   + std::to_wstring(t) + L".dmp";
+    } else {
+        filename = L"crash_" + std::to_wstring(t) + L".dmp";
+    }
     GenerateMiniDummp(excp, filename.c_str());
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -166,15 +173,27 @@ void StartCrashTrace() {
     SetUnhandledExceptionFilter(FuncCrashCallBack);
 }
 
+void SetDumpDirectory(const char* path) {
+    if (!path || !path[0]) return;
+    int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+    if (len <= 0 || len > (int)(sizeof(g_dumpDirectory) / sizeof(wchar_t))) return;
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, g_dumpDirectory, len);
+}
+
 // ── 主动写 dump（非崩溃场景）─────────────────────────
 // 模拟 EXCEPTION_POINTERS 以复用 Minidump 生成逻辑
 bool CaptureCrashDumpWindows() {
-    // 在当前线程触发一个虚假的断点异常以捕获上下文
+    std::wstring filename;
+    if (g_dumpDirectory[0]) {
+        filename = std::wstring(g_dumpDirectory) + L"\\capture_"
+                   + std::to_wstring(std::time(0)) + L".dmp";
+    } else {
+        filename = L"capture_" + std::to_wstring(std::time(0)) + L".dmp";
+    }
     __try {
         DebugBreak();
     } __except (GenerateMiniDummp(
-        GetExceptionInformation(),
-        (std::wstring(L"capture_") + std::to_wstring(std::time(0)) + L".dmp").c_str()
+        GetExceptionInformation(), filename.c_str()
     ), EXCEPTION_EXECUTE_HANDLER) {
     }
     return true;
