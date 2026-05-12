@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.8...4.0)
 # 如果支持，请为 MSVC 编译器启用热重载。
 if(POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo,Release>:ProgramDatabase>>")
 endif()
 
 project("CrashTrace")
@@ -42,6 +42,9 @@ if(WIN32)
   target_compile_definitions(CrashTrace PRIVATE CrashTrace_EXPORTS)
   if(MSVC)
     target_compile_options(CrashTrace PRIVATE /utf-8)
+    # Release 也生成 PDB — 崩溃 dump 需要符号文件才能解析堆栈
+    target_compile_options(CrashTrace PRIVATE "$<$<CONFIG:Release>:/Zi>")
+    target_link_options(CrashTrace PRIVATE "$<$<CONFIG:Release>:/DEBUG>")
   endif()
   target_link_libraries(CrashTrace PRIVATE ${PLATFORM_LIBS})
 
